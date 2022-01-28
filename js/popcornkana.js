@@ -42,21 +42,17 @@ export class PopcornKanaScene extends Phaser.Scene {
     init(data)
     {
         this.kana = [];
-        console.log(data);
         if (data['katakana']) {
-            console.log('adding katakana');
             this.kana.push(...katakana);
         }
         if (data['hiragana']) {
-            console.log('adding hiragana');
             this.kana.push(...hiragana);
         }
     }
 
     preload ()
     {
-        //this.load.image('popcorn', 'assets/popcorn.png');
-        this.load.spritesheet('popcorn', '../assets/popcorn-spritesheet.png', { frameWidth: 86, frameHeight: 67});
+        this.load.spritesheet('popcorn', 'assets/popcorn-spritesheet.png', { frameWidth: 86, frameHeight: 67});
         this.load.bitmapFont('kana', 'assets/kana.png', 'assets/kana.xml');
         this.load.image('nice', 'assets/nice.png');
         this.load.image('sad', 'assets/sad.png');
@@ -64,11 +60,9 @@ export class PopcornKanaScene extends Phaser.Scene {
         this.load.image('heart', 'assets/heart.png');
 
         this.popcorns = this.physics.add.group();
-        //this.physics.world.setBoundsCollision();
-        //this.physics.world.on('worldbounds', this.missedAnswer);
+        
         this.width = this.game.config.width;
         this.height = this.game.config.height;
-        console.log(this);
     }
 
     create ()
@@ -97,10 +91,6 @@ export class PopcornKanaScene extends Phaser.Scene {
         this.endline = this.add.line(this.width/2, this.height-80, 0, 0, this.width, 0, 0x000000);
         this.endline.setLineWidth(0.5);
         this.physics.add.existing(this.endline, true);
-    
-
-        //Objects
-        //this.createPopcorn();
 
         //Input Text
         this.createTextBox();
@@ -224,9 +214,7 @@ export class PopcornKanaScene extends Phaser.Scene {
             }
             else if (event.keyCode == 13) //enter
             {
-                console.log(textInput.text);
                 let popcorn = scene.popcorns.getFirst(true);
-                console.log(popcorn.data.values['answers']);
                 
                 let correctAnswer = popcorn.data.values['answers'].includes(textInput.text);
                 scene.totalAttempts += 1;
@@ -264,8 +252,6 @@ export class PopcornKanaScene extends Phaser.Scene {
     }
 
     missedAnswer(popcorn) {
-        console.log("Missed");
-        console.log(popcorn.data.values['answers']);
         popcorn.body.setVelocityY(0);
         popcorn.txt.setText(popcorn.data.values['answers'][0]);
         let scene = popcorn.scene;
