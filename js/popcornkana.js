@@ -67,13 +67,38 @@ export class PopcornKanaScene extends Phaser.Scene {
 
     create ()
     {
+        this.createEatAnimation();
+
+        this.createPauseButton();
+
+        this.createBoundaryLine();
+        
+        this.createInputTextBox();
+
+        this.createInfoBar();
+
+        this.configureStepEvent();
+
+        this.scene.pause();
+        this.scene.launch('Countdown');
+    }
+
+    update ()
+    {
+    }
+
+    
+
+    createEatAnimation() {
         this.anims.create({
             key: 'eat',
             frames: this.anims.generateFrameNumbers('popcorn', { start: 0, end: 5 }),
             frameRate: 15,
             repeat: 0
         });
+    }
 
+    createPauseButton() {
         let pauseButton = this.add.image(this.width-this.STATUS_BAR_CENTER, this.STATUS_BAR_CENTER, 'pause');
         pauseButton.setInteractive();
         
@@ -86,15 +111,108 @@ export class PopcornKanaScene extends Phaser.Scene {
             this.scene.pause();
             this.scene.launch('Pause');
         }, this);
-        
+    }
+
+    createBoundaryLine() {
         this.endline = this.add.line(this.width/2, this.height-80, 0, 0, this.width, 0, 0x000000);
         this.endline.setLineWidth(0.5);
         this.physics.add.existing(this.endline, true);
+    }
 
-        //Input Text
-        this.createTextBox();
+    createBlinkingCursor(startX, startY) {
+        var blinkingCursor = this.add.line(startX, startY, 0, 0, 0, 24, 0x000000);
+        this.tweens.add({
+            targets: blinkingCursor,
+            alpha: {from: 0, to: 1},
+            ease: 'Sine.InOut',
+            duration: 450,
+            repeat: -1,
+            hold: 0,
+            yoyo: true
+        });
+        return blinkingCursor;
+    }
 
+    correctAnswer(popcorn) {
+        //do animation and clear
+        popcorn.txt.destroy();
+        popcorn.body.setVelocityY(0);
+        popcorn.bg.anims.play('eat');
+        this.popcorns.remove(popcorn, false, false);
         
+        popcorn.bg.on('animationcomplete', function () {
+            let x = popcorn.x;
+            let y = popcorn.y;
+            popcorn.destroy();
+            //var nice = scene.add.sprite(x, y, 'nice');
+            this.addNice(x, y);
+        }, this);
+        
+        //process correct answers
+        this.totalCorrect += 1;
+        let answerDelay = Date.now() - this.lastAnswerTime;
+        this.lastAnswerTime = Date.now();
+        this.answerWindow.push(answerDelay);
+        
+        this.increaseSpawnRate();
+        let spawnRate = this.calcSpawnRate();
+        this.spawnRateText.setText('Spawn Rate: ' + spawnRate + '\uFF58');
+        let accuracy = this.calcAccuracy();
+        this.accuracyText.setText('Accuracy: ' + accuracy + '%');
+    }
+
+    configureTextInput(blinkingCursor, textInput, startX, startY) {
+        let BACKSPACE = 8;
+        let LOWERCASE_A = 48;
+        let LOWERCASE_Z = 90;
+        let ENTER = 13;
+        let MAX_LENGTH = 4;
+        this.input.keyboard.on('keydown', function (event) {
+
+            if (event.keyCode === BACKSPACE && textInput.text.length > 0)
+            {
+                textInput.text = textInput.text.substring(0, textInput.text.length - 1);
+                blinkingCursor.setPosition(startX + textInput.width/2, startY);
+            }
+            else if (textInput.text.length < MAX_LENGTH && (event.keyCode >= LOWERCASE_A && event.keyCode <= LOWERCASE_Z))
+            {
+                textInput.text += event.key;
+                blinkingCursor.setPosition(startX + textInput.width/2, startY);
+            }
+            else if (event.keyCode == ENTER) //enter
+            {
+                let popcorn = this.popcorns.getFirst(true);
+                
+                let isCorrectAnswer = popcorn.data.values['answers'].includes(textInput.text);
+                this.totalAttempts += 1;
+                if (isCorrectAnswer) {
+                    this.correctAnswer(popcorn);
+                }
+
+                // clear text
+                textInput.text = '';
+                blinkingCursor.setPosition(startX, startY);
+            }
+        }, this);
+    }
+
+    createInputTextBox() {
+        let fontStyle = {
+            font: '24px Arial', 
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 3
+        };
+        let startX = this.width/2;
+        let startY = this.height - 60;
+        var textInput = this.add.text(startX, startY, '', fontStyle);
+        textInput.setOrigin(0.5, 0.5);
+
+        var blinkingCursor = this.createBlinkingCursor(startX, startY);
+        this.configureTextInput(blinkingCursor, textInput, startX, startY);
+    }
+
+    createInfoBar() {
         let fontStyle = {
             font: '24px Arial', 
             color: '#E3FBFF',
@@ -109,7 +227,7 @@ export class PopcornKanaScene extends Phaser.Scene {
 
         this.timerText = this.add.text(220+this.spawnRateText.width+50, this.STATUS_BAR_CENTER/2, 'Time: 0:00', fontStyle);
         this.timerText.setOrigin(0, 0.4);
-        // Each 1000 ms call onEvent
+        // Each 1000 ms call upateTimer
         this.time.addEvent({ delay: 1000, callback: this.updateTimer, callbackScope: this, loop: true });
 
         //Lives
@@ -117,28 +235,6 @@ export class PopcornKanaScene extends Phaser.Scene {
             this.hearts.push(new Phaser.GameObjects.Image(this, this.STATUS_BAR_CENTER + i*64, this.STATUS_BAR_CENTER, 'heart'));
             this.add.existing(this.hearts[i]);
         }
-
-        //Game Loop
-        
-        this.game.events.on('step', function(time, delta) {
-            if (this.sys.isPaused()) {
-                this.lastSpawnTime += delta;
-            }
-            else {
-                if (this.lastSpawnTime == -1 || (time - this.lastSpawnTime) > this.spawnDelay) {
-                    this.lastSpawnTime = time;
-                    this.createPopcorn();
-                }
-            }
-        }, this);
-
-        this.scene.pause();
-        this.scene.launch('Countdown');
-
-    }
-
-    update ()
-    {
     }
 
     createPopcorn() {
@@ -176,80 +272,18 @@ export class PopcornKanaScene extends Phaser.Scene {
         return popcorn;
     }
 
-    createTextBox() {
-        let maxLength = 4;
-        let fontStyle = {
-            font: '24px Arial', 
-            color: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 3
-        };
-        var textInput = this.add.text(this.width/2, this.height-60, '', fontStyle);
-        textInput.setOrigin(0.5, 0.5);
-
-        var blinkingCursor = this.add.line(this.width/2, this.height-60, 0, 0, 0, 24, 0x000000);
-        this.tweens.add({
-            targets: blinkingCursor,
-            alpha: {from: 0, to: 1},
-            ease: 'Sine.InOut',
-            duration: 450,
-            repeat: -1,
-            hold: 0,
-            yoyo: true
-        });
-        
-        let scene = this;
-        this.input.keyboard.on('keydown', function (event) {
-
-            if (event.keyCode === 8 && textInput.text.length > 0) //backspace
-            {
-                textInput.text = textInput.text.substring(0, textInput.text.length - 1);
-                blinkingCursor.setPosition(textInput.width/2 + scene.width/2, scene.height-60);
+    configureStepEvent() {
+        this.game.events.on('step', function(time, delta) {
+            if (this.sys.isPaused()) {
+                this.lastSpawnTime += delta;
             }
-            else if (textInput.text.length < maxLength && (event.keyCode >= 48 && event.keyCode <= 90)) //text
-            {
-                textInput.text += event.key;
-                blinkingCursor.setPosition(textInput.width/2 + scene.width/2, scene.height-60);
-            }
-            else if (event.keyCode == 13) //enter
-            {
-                let popcorn = scene.popcorns.getFirst(true);
-                
-                let correctAnswer = popcorn.data.values['answers'].includes(textInput.text);
-                scene.totalAttempts += 1;
-                if (correctAnswer) {
-                    //do animation and clear
-                    popcorn.txt.destroy();
-                    popcorn.body.setVelocityY(0);
-                    popcorn.bg.anims.play('eat');
-                    scene.popcorns.remove(popcorn, false, false);
-                    
-                    popcorn.bg.on('animationcomplete', function () {
-                        let x = popcorn.x;
-                        let y = popcorn.y;
-                        popcorn.destroy();
-                        //var nice = scene.add.sprite(x, y, 'nice');
-                        scene.addNice(x, y);
-                    });
-                    
-                    //process correct answers
-                    scene.totalCorrect += 1;
-                    let answerDelay = Date.now() - scene.lastAnswerTime;
-                    scene.lastAnswerTime = Date.now();
-                    scene.answerWindow.push(answerDelay);
-                    
-                    scene.increaseSpawnRate();
-                    let spawnRate = scene.calcSpawnRate();
-                    scene.spawnRateText.setText('Spawn Rate: ' + spawnRate + '\uFF58');
-                    let accuracy = scene.calcAccuracy();
-                    scene.accuracyText.setText('Accuracy: ' + accuracy + '%');
+            else {
+                if (this.lastSpawnTime == -1 || (time - this.lastSpawnTime) > this.spawnDelay) {
+                    this.lastSpawnTime = time;
+                    this.createPopcorn();
                 }
-
-                textInput.text = '';
-                blinkingCursor.setPosition(scene.width/2, scene.height-60);
             }
-
-        });
+        }, this);
     }
 
     missedAnswer(popcorn) {
