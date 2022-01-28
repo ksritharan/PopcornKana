@@ -67,7 +67,6 @@ export class PopcornKanaScene extends Phaser.Scene {
 
     create ()
     {
-        this.input.setDefaultCursor('url(assets/cursor.cur), pointer');
         this.anims.create({
             key: 'eat',
             frames: this.anims.generateFrameNumbers('popcorn', { start: 0, end: 5 }),
@@ -223,10 +222,12 @@ export class PopcornKanaScene extends Phaser.Scene {
                     popcorn.txt.destroy();
                     popcorn.body.setVelocityY(0);
                     popcorn.bg.anims.play('eat');
+                    scene.popcorns.remove(popcorn, false, false);
+                    
                     popcorn.bg.on('animationcomplete', function () {
                         let x = popcorn.x;
                         let y = popcorn.y;
-                        scene.popcorns.remove(popcorn, true, true);
+                        popcorn.destroy();
                         //var nice = scene.add.sprite(x, y, 'nice');
                         scene.addNice(x, y);
                     });
@@ -266,7 +267,7 @@ export class PopcornKanaScene extends Phaser.Scene {
             allPopcorns[i].destroy();
         }
 
-        scene.time.delayedCall(350, function () {
+        scene.time.delayedCall(500, function () {
             scene.popcorns.killAndHide(popcorn);
             popcorn.destroy();
             scene.addSad(x, y);
