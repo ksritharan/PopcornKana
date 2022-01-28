@@ -10,8 +10,7 @@ export class PopcornMenuScene extends Phaser.Scene {
 
     preload ()
     {
-        //this.load.image('popcorn', 'assets/popcorn.png');
-        this.load.spritesheet('popcorn', '../assets/popcorn-spritesheet.png', { frameWidth: 86, frameHeight: 67});
+        this.load.spritesheet('popcorn', 'assets/popcorn-spritesheet.png', { frameWidth: 86, frameHeight: 67});
         this.load.bitmapFont('kana', 'assets/kana.png', 'assets/kana.xml');
         this.load.image('title', 'assets/title.png');
         this.load.image('play', 'assets/play.png');
@@ -48,7 +47,6 @@ export class PopcornMenuScene extends Phaser.Scene {
 
         var checkBoxText = this.add.text(x + size/2 + textOffset, y, text, {font: size+'px Arial', color: '#E3FBFF', strokeThickness: 3, stroke: '#91CED8'})
         checkBoxText.setOrigin(0, 0.5);
-        console.log(checkBoxText);
 
         var checkBox = this.add.rectangle(x, y, size, size, 0xE3FBFF);
         checkBox.setStrokeStyle(1, 0x91CED8);
@@ -58,7 +56,6 @@ export class PopcornMenuScene extends Phaser.Scene {
         var checkMark = this.add.text(x, y, 'X', {font: size+'px Arial', color: '#91CED8'});
         checkMark.setOrigin(0.5, 0.5);
         checkMark.setVisible(checked);
-        console.log(checkBox.checked);
         checkBox.checkMark = checkMark;
         let scene = this;
         checkBox.on('pointerup', function()
