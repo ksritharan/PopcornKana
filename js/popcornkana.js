@@ -10,6 +10,13 @@ export class PopcornKanaScene extends Phaser.Scene {
         this.popcorns;
         this.endline;
 
+        this.pauseTime;
+        this.wasPaused;
+        this.afkTime = 0;
+        this.totalAfkTime = 0;
+
+        //Spawn
+
         this.spawnDelay = 4000;
         this.lastSpawnTime = -1;
 
@@ -24,6 +31,13 @@ export class PopcornKanaScene extends Phaser.Scene {
         this.spawnRateText;
         this.calcAccuracy = function () { return this.totalAttempts == 0 ? 0 : Math.floor(100*this.totalCorrect/this.totalAttempts); }
         this.accuracyText;
+
+        //Stats
+        this.startTime;
+        this.getRelativeTimeSeconds = function () { return Math.round((this.time.now - this.startTime - this.totalAfkTime)/1000);};
+        this.accuracyData = [{x: 0, y: 0}];
+        this.answerRateData = [{x: 0, y: 0}];
+        this.avgAnswerRateData = [{x: 0, y: 0}];
 
         this.STATUS_BAR_HEIGHT = 85;
         this.STATUS_BAR_CENTER = 43;
@@ -63,6 +77,8 @@ export class PopcornKanaScene extends Phaser.Scene {
         
         this.width = this.game.config.width;
         this.height = this.game.config.height;
+
+        this.startTime = this.time.now;
     }
 
     create ()
@@ -77,14 +93,21 @@ export class PopcornKanaScene extends Phaser.Scene {
 
         this.createInfoBar();
 
-        this.configureStepEvent();
-
-        this.scene.pause();
-        this.scene.launch('Countdown');
+        this.pauseSceneAndLaunch('Countdown');
     }
 
-    update ()
+    update (time, delta)
     {
+        if (this.wasPaused) {
+            this.afkTime += time - this.pauseTime;
+            this.totalAfkTime += time - this.pauseTime;
+            this.wasPaused = false;
+        }
+        else if (this.lastSpawnTime == -1 || (time - this.lastSpawnTime - this.afkTime) > this.spawnDelay) {
+            this.lastSpawnTime = time;
+            this.afkTime = 0;
+            this.createPopcorn();
+        }
     }
 
     
@@ -103,14 +126,19 @@ export class PopcornKanaScene extends Phaser.Scene {
         pauseButton.setInteractive();
         
         pauseButton.on('pointerup', function () {
-            this.scene.pause();
-            this.scene.launch('Pause');
+            this.pauseSceneAndLaunch('Pause');
         }, this);
 
         this.game.events.addListener(Phaser.Core.Events.BLUR, function () {
-            this.scene.pause();
-            this.scene.launch('Pause');
+            this.pauseSceneAndLaunch('Pause');
         }, this);
+    }
+
+    pauseSceneAndLaunch(sceneKey) {
+        this.wasPaused = true;
+        this.pauseTime = this.time.now;
+        this.scene.pause();
+        this.scene.launch(sceneKey);
     }
 
     createBoundaryLine() {
@@ -159,6 +187,12 @@ export class PopcornKanaScene extends Phaser.Scene {
         this.spawnRateText.setText('Spawn Rate: ' + spawnRate + '\uFF58');
         let accuracy = this.calcAccuracy();
         this.accuracyText.setText('Accuracy: ' + accuracy + '%');
+        let relativeTime = this.getRelativeTimeSeconds();
+        this.accuracyData.push({x: relativeTime, y: accuracy});
+        let answerRate = Math.floor(100000/answerDelay)/100;
+        this.answerRateData.push({x: relativeTime, y: answerRate});
+        let avgAnswerRate = Math.floor(100000/this.answerWindow.getAverage())/100;
+        this.avgAnswerRateData.push({x: relativeTime, y: avgAnswerRate});
     }
 
     configureTextInput(blinkingCursor, textInput, startX, startY) {
@@ -261,7 +295,7 @@ export class PopcornKanaScene extends Phaser.Scene {
         this.popcorns.add(popcorn);
 
         popcorn.body.setVelocityY(90);
-        this.physics.add.collider(popcorn, this.endline, this.missedAnswer);
+        this.physics.add.collider(popcorn, this.endline, this.missedAnswer, undefined, this);
 
 
         // for answer rate
@@ -272,49 +306,41 @@ export class PopcornKanaScene extends Phaser.Scene {
         return popcorn;
     }
 
-    configureStepEvent() {
-        this.game.events.on('step', function(time, delta) {
-            if (this.sys.isPaused()) {
-                this.lastSpawnTime += delta;
-            }
-            else {
-                if (this.lastSpawnTime == -1 || (time - this.lastSpawnTime) > this.spawnDelay) {
-                    this.lastSpawnTime = time;
-                    this.createPopcorn();
-                }
-            }
-        }, this);
-    }
-
     missedAnswer(popcorn) {
         popcorn.body.setVelocityY(0);
         popcorn.txt.setText(popcorn.data.values['answers'][0]);
-        let scene = popcorn.scene;
         let x = popcorn.x;
         let y = popcorn.y;
 
         //getMatching() function is bugged... cause of "startIndex + endIndex > len"
         // if we specify startIndex 1, and length = 
-        var allPopcorns = scene.popcorns.getChildren();
+        var allPopcorns = this.popcorns.getChildren();
         for (let i = allPopcorns.length-1; i > 0; i--) {
-            scene.popcorns.killAndHide(allPopcorns[i]);
-            allPopcorns[i].destroy();
+            this.popcorns.remove(allPopcorns[i], true, true);
         }
 
-        scene.time.delayedCall(500, function () {
-            scene.popcorns.killAndHide(popcorn);
-            popcorn.destroy();
-            scene.addSad(x, y);
-        });
+        this.time.delayedCall(500, function () {
+            this.popcorns.remove(popcorn, true, true);
+            this.addSad(x, y);
+        }, undefined, this);
         
-        scene.lastAnswerTime = Date.now();
-        scene.decreaseSpawnRate();
-        let spawnRate = scene.calcSpawnRate();
-        scene.spawnRateText.setText('Spawn Rate: ' + spawnRate + '\uFF58');
+        this.lastAnswerTime = Date.now();
+        this.decreaseSpawnRate();
+        let spawnRate = this.calcSpawnRate();
+        this.spawnRateText.setText('Spawn Rate: ' + spawnRate + '\uFF58');
 
-        if (scene.lives > 0) {
-            scene.lives -= 1;
-            scene.hearts[scene.lives].setVisible(false);
+        if (this.lives > 0) {
+            this.lives -= 1;
+            this.hearts[this.lives].setVisible(false);
+            if (this.lives == 0) {
+                let stats = {
+                    accuracy: this.accuracyData,
+                    answerRate: this.answerRateData,
+                    avgAnswerRate: this.avgAnswerRateData
+                }
+                this.scene.launch('Stats', stats);
+                this.scene.remove();
+            }
         }
     }
 

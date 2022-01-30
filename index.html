@@ -28,13 +28,14 @@
         import { PopcornKanaScene } from './js/popcornkana.js';
         import { PauseScene } from './js/pause.js';
         import { CountdownScene } from './js/countdown.js';
+        import { StatsScene } from './js/stats.js';
         var config = {
             type: Phaser.AUTO,
             parent: 'popcorn-kana',
             width: 800,
             height: 600,
             transparent: true,
-            scene: [ PopcornMenuScene, PopcornKanaScene, PauseScene, CountdownScene ],
+            scene: [ PopcornMenuScene, PopcornKanaScene, PauseScene, CountdownScene, StatsScene ],
             physics: {
                 default: 'arcade',
                 arcade: {

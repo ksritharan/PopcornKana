@@ -3,7 +3,7 @@ export class CountdownScene extends Phaser.Scene {
     constructor ()
     {
         super({ key: 'Countdown' });
-        this.countdownNum = 5;
+        this.countdownNum = 3;
         this.width;
         this.height;
     }
