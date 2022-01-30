@@ -65,6 +65,8 @@ export class StatsScene extends Phaser.Scene {
     }
 
     createAccuracyInfo () {
+        let xValues = this.accuracy.map(e => e.x);
+        let yValues = this.accuracy.map(e => e.y);
         
   
         //Average Accuracy
@@ -106,6 +108,8 @@ export class StatsScene extends Phaser.Scene {
     }
 
     createAvgAnswerRateInfo () {
+        let xValues = this.avgAnswerRate.map(e => e.x);
+        let yValues = this.avgAnswerRate.map(e => e.y);
 
         let config = {
             centerX: this.width/2,

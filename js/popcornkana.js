@@ -94,7 +94,6 @@ export class PopcornKanaScene extends Phaser.Scene {
         this.createInfoBar();
 
         this.pauseSceneAndLaunch('Countdown');
-
     }
 
     update (time, delta)
