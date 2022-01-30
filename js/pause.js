@@ -24,6 +24,7 @@ export class PauseScene extends Phaser.Scene {
 
         this.input.on('pointerup', function () {
             clickToContinue.destroy();
+            this.scene.stop();
             this.scene.resume('PopcornKana');
 
         }, this);

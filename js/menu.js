@@ -6,6 +6,9 @@ export class PopcornMenuScene extends Phaser.Scene {
 
         this.hiragana = true;
         this.katakana = true;
+
+        this.width;
+        this.height;
     }
 
     preload ()
@@ -27,13 +30,15 @@ export class PopcornMenuScene extends Phaser.Scene {
         
         var playButton = this.add.image(this.width/2, 300, 'play');
         playButton.setInteractive();
-        playButton.on('pointerup', function () {
-            if (this.hiragana || this.katakana) {
-                this.scene.launch('PopcornKana', {'hiragana': this.hiragana, 'katakana': this.katakana});
-                this.scene.remove();
-            }
-            else {
-                this.addSadMessage(this.width/2, 200);
+        playButton.on('pointerup', function (pointer) {
+            if (pointer.buttons == 0) {
+                if (this.hiragana || this.katakana) {
+                    let data = {'hiragana': this.hiragana, 'katakana': this.katakana};
+                    this.scene.start('PopcornKana', data);
+                }
+                else {
+                    this.addSadMessage(this.width/2, 200);
+                }
             }
         }, this);        
         

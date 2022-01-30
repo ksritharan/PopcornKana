@@ -3,9 +3,14 @@ export class CountdownScene extends Phaser.Scene {
     constructor ()
     {
         super({ key: 'Countdown' });
-        this.countdownNum = 3;
+        this.countdownNum;
         this.width;
         this.height;
+    }
+
+    init ()
+    {
+        this.countdownNum = 3;
     }
 
     preload ()
@@ -30,6 +35,7 @@ export class CountdownScene extends Phaser.Scene {
         if (this.countdownNum == 0) {
             this.time.delayedCall(500, function () {
                 this.countdownText.destroy();
+                this.scene.stop();
                 this.scene.resume('PopcornKana');
             }, [], this);
         }

@@ -32,7 +32,8 @@ export class StatsScene extends Phaser.Scene {
         this.load.bitmapFont('kana', 'assets/kana.png', 'assets/kana.xml');
         this.load.image('nice', 'assets/nice.png');
         this.load.image('sad', 'assets/sad.png');
-        
+        this.load.image('tomenu', 'assets/tomenu.png');
+
         this.width = this.game.config.width;
         this.height = this.game.config.height;
     }
@@ -51,6 +52,16 @@ export class StatsScene extends Phaser.Scene {
         var tabLabels = ['Accuracy', 'Avg. Answer Rate', 'Performance']
         var tabLayers = [this.createAccuracyInfo(), this.createAvgAnswerRateInfo(), this.createPerformanceInfo()];
         this.createTabs(50, 100, tabLabels, tabLayers);
+        this.createToMenuButton();
+    }
+
+    createToMenuButton () {
+        let toMenuButton = this.add.image(this.width-this.STATUS_BAR_CENTER, this.STATUS_BAR_CENTER, 'tomenu');
+        toMenuButton.setInteractive();
+        
+        toMenuButton.on('pointerup', function () {
+            this.scene.start('Menu');
+        }, this);
     }
 
     createAccuracyInfo () {

@@ -6,8 +6,11 @@ export class PopcornKanaScene extends Phaser.Scene {
     constructor ()
     {
         super({ key: 'PopcornKana' });
+    }
 
-        this.popcorns;
+    init(data)
+    {
+        this.popcorns = this.physics.add.group();
         this.endline;
 
         this.pauseTime;
@@ -33,7 +36,7 @@ export class PopcornKanaScene extends Phaser.Scene {
         this.accuracyText;
 
         //Stats
-        this.startTime;
+        this.startTime = this.time.now;
         this.getRelativeTimeSeconds = function () { return Math.round((this.time.now - this.startTime - this.totalAfkTime)/1000);};
         this.accuracyData = [{x: 0, y: 0}];
         this.answerRateData = [{x: 0, y: 0}];
@@ -53,11 +56,6 @@ export class PopcornKanaScene extends Phaser.Scene {
         this.width;
         this.height;
 
-        this.kana;
-    }
-
-    init(data)
-    {
         this.kana = [];
         if (data['katakana']) {
             this.kana.push(...katakana);
@@ -74,14 +72,11 @@ export class PopcornKanaScene extends Phaser.Scene {
         this.load.image('nice', 'assets/nice.png');
         this.load.image('sad', 'assets/sad.png');
         this.load.image('pause', 'assets/pause.png');
+        this.load.image('back', 'assets/back.png');
         this.load.image('heart', 'assets/heart.png');
 
-        this.popcorns = this.physics.add.group();
-        
         this.width = this.game.config.width;
         this.height = this.game.config.height;
-
-        this.startTime = this.time.now;
     }
 
     create ()
@@ -90,6 +85,8 @@ export class PopcornKanaScene extends Phaser.Scene {
 
         this.createPauseButton();
 
+        this.createBackButton();
+
         this.createBoundaryLine();
         
         this.createInputTextBox();
@@ -97,6 +94,7 @@ export class PopcornKanaScene extends Phaser.Scene {
         this.createInfoBar();
 
         this.pauseSceneAndLaunch('Countdown');
+
     }
 
     update (time, delta)
@@ -128,12 +126,16 @@ export class PopcornKanaScene extends Phaser.Scene {
         let pauseButton = this.add.image(this.width-this.STATUS_BAR_CENTER, this.STATUS_BAR_CENTER, 'pause');
         pauseButton.setInteractive();
         
-        pauseButton.on('pointerup', function () {
-            this.pauseSceneAndLaunch('Pause');
+        pauseButton.on('pointerup', function (pointer) {
+            if (pointer.buttons == 0) {
+                this.pauseSceneAndLaunch('Pause');
+            }
         }, this);
 
         this.game.events.addListener(Phaser.Core.Events.BLUR, function () {
-            this.pauseSceneAndLaunch('Pause');
+            if (this.scene.isActive()) {
+                this.pauseSceneAndLaunch('Pause');
+            }
         }, this);
     }
 
@@ -142,6 +144,17 @@ export class PopcornKanaScene extends Phaser.Scene {
         this.pauseTime = this.time.now;
         this.scene.pause();
         this.scene.launch(sceneKey);
+    }
+
+    createBackButton() {
+        let backButton = this.add.image(this.width-this.STATUS_BAR_CENTER-50, this.STATUS_BAR_CENTER, 'back');
+        backButton.setInteractive();
+        
+        backButton.on('pointerup', function (pointer) {
+            if (pointer.buttons == 0) {
+                this.scene.start('Menu');
+            }
+        }, this);
     }
 
     createBoundaryLine() {
@@ -378,8 +391,7 @@ export class PopcornKanaScene extends Phaser.Scene {
                     avgAnswerRate: this.avgAnswerRateData,
                     promptData: this.promptData
                 }
-                this.scene.launch('Stats', stats);
-                this.scene.remove();
+                this.scene.start('Stats', stats);
             }
         }
     }
