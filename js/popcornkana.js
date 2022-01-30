@@ -324,10 +324,15 @@ export class PopcornKanaScene extends Phaser.Scene {
             this.addSad(x, y);
         }, undefined, this);
         
+        this.totalAttempts += 1;
         this.lastAnswerTime = Date.now();
         this.decreaseSpawnRate();
         let spawnRate = this.calcSpawnRate();
         this.spawnRateText.setText('Spawn Rate: ' + spawnRate + '\uFF58');
+        let accuracy = this.calcAccuracy();
+        this.accuracyText.setText('Accuracy: ' + accuracy + '%');
+        let relativeTime = this.getRelativeTimeSeconds();
+        this.accuracyData.push({x: relativeTime, y: accuracy});
 
         if (this.lives > 0) {
             this.lives -= 1;
