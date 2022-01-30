@@ -42,6 +42,11 @@ export class Tabs {
                 bgFillStartX = x;
                 bgFillHeight = tabLabel.height+this.padding;
             }
+            let tabDivider;
+            if ( i > 0 ) {
+                tabDivider = new Phaser.GameObjects.Line(this.scene, 0, 0, 0, 0, 0, (tabLabel.height+this.padding)*0.66, this.activeTabColor, 0.5).setLineWidth(0.5);
+                tabDivider.setPosition(x - tabBox.width/2 -+ this.padding/2, y);
+            }
             tabLabel.setPosition(x, y);
             tabBox.setPosition(x, y);
             tabBoundBox.setPosition(x, y);
@@ -57,6 +62,9 @@ export class Tabs {
             }, this);
             objects.push(tabBox);
             objects.push(tabLabel);
+            if (tabDivider !== undefined) {
+                objects.push(tabDivider);
+            }
             this.tabBoxes.push(tabBox);
             x += tabBox.width/2 + this.padding/2;
 

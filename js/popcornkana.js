@@ -38,6 +38,9 @@ export class PopcornKanaScene extends Phaser.Scene {
         this.accuracyData = [{x: 0, y: 0}];
         this.answerRateData = [{x: 0, y: 0}];
         this.avgAnswerRateData = [{x: 0, y: 0}];
+        this.promptData = {
+            prompts: []
+        };
 
         this.STATUS_BAR_HEIGHT = 85;
         this.STATUS_BAR_CENTER = 43;
@@ -167,7 +170,7 @@ export class PopcornKanaScene extends Phaser.Scene {
         popcorn.body.setVelocityY(0);
         popcorn.bg.anims.play('eat');
         this.popcorns.remove(popcorn, false, false);
-        
+
         popcorn.bg.on('animationcomplete', function () {
             let x = popcorn.x;
             let y = popcorn.y;
@@ -193,6 +196,13 @@ export class PopcornKanaScene extends Phaser.Scene {
         this.answerRateData.push({x: relativeTime, y: answerRate});
         let avgAnswerRate = Math.floor(100000/this.answerWindow.getAverage())/100;
         this.avgAnswerRateData.push({x: relativeTime, y: avgAnswerRate});
+
+        let prompt = popcorn.data.values['prompt'];
+        let answer = popcorn.data.values['answers'][0];
+
+        this.createpromptDataIfNotExists(prompt, answer);
+        this.promptData[prompt]['numCorrect'] += 1;
+        this.promptData[prompt]['delays'].push(answerDelay);
     }
 
     configureTextInput(blinkingCursor, textInput, startX, startY) {
@@ -221,6 +231,12 @@ export class PopcornKanaScene extends Phaser.Scene {
                 this.totalAttempts += 1;
                 if (isCorrectAnswer) {
                     this.correctAnswer(popcorn);
+                }
+                else {
+                    let prompt = popcorn.data.values['prompt'];
+                    let answer = popcorn.data.values['answers'][0];
+                    this.createpromptDataIfNotExists(prompt, answer);
+                    this.promptData[prompt]['numAttempts'] += 1;
                 }
 
                 // clear text
@@ -306,11 +322,29 @@ export class PopcornKanaScene extends Phaser.Scene {
         return popcorn;
     }
 
+    createpromptDataIfNotExists(prompt, answer) {
+        if (this.promptData[prompt] === undefined) {
+            this.promptData[prompt] = {
+                'answer': answer,
+                'numMissed': 0,
+                'numCorrect': 0,
+                'numAttempts': 0,
+                'delays': []
+            };
+            this.promptData['prompts'].push(prompt);
+        }
+    }
+
     missedAnswer(popcorn) {
         popcorn.body.setVelocityY(0);
-        popcorn.txt.setText(popcorn.data.values['answers'][0]);
+        let prompt = popcorn.data.values['prompt'];
+        let answer = popcorn.data.values['answers'][0];
+        popcorn.txt.setText(answer);
         let x = popcorn.x;
         let y = popcorn.y;
+
+        this.createpromptDataIfNotExists(prompt, answer);
+        this.promptData[prompt]['numMissed'] += 1;
 
         //getMatching() function is bugged... cause of "startIndex + endIndex > len"
         // if we specify startIndex 1, and length = 
@@ -341,7 +375,8 @@ export class PopcornKanaScene extends Phaser.Scene {
                 let stats = {
                     accuracy: this.accuracyData,
                     answerRate: this.answerRateData,
-                    avgAnswerRate: this.avgAnswerRateData
+                    avgAnswerRate: this.avgAnswerRateData,
+                    promptData: this.promptData
                 }
                 this.scene.launch('Stats', stats);
                 this.scene.remove();

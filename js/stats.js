@@ -23,6 +23,7 @@ export class StatsScene extends Phaser.Scene {
         this.accuracy = data['accuracy'];
         this.answerRate = data['answerRate'];
         this.avgAnswerRate = data['avgAnswerRate'];
+        this.promptData = data['promptData'];
     }
 
     preload ()
@@ -31,8 +32,6 @@ export class StatsScene extends Phaser.Scene {
         this.load.bitmapFont('kana', 'assets/kana.png', 'assets/kana.xml');
         this.load.image('nice', 'assets/nice.png');
         this.load.image('sad', 'assets/sad.png');
-        this.load.image('pause', 'assets/pause.png');
-        this.load.image('heart', 'assets/heart.png');
         
         this.width = this.game.config.width;
         this.height = this.game.config.height;
@@ -49,15 +48,14 @@ export class StatsScene extends Phaser.Scene {
             strokeAlpha: 0.75
         };
         this.add.text(this.width/2, this.STATUS_BAR_CENTER/2, 'Results', fontStyle).setOrigin(0.5, 0.5);
-        var tabLabels = ['Accuracy', 'Avg. Answer Rate']
-        var tabLayers = [this.createAccuracyInfo(), this.createAvgAnswerRateInfo()];
-        this.createTabs(50, 100, tabLabels, tabLayers);        
+        var tabLabels = ['Accuracy', 'Avg. Answer Rate', 'Performance']
+        var tabLayers = [this.createAccuracyInfo(), this.createAvgAnswerRateInfo(), this.createPerformanceInfo()];
+        this.createTabs(50, 100, tabLabels, tabLayers);
     }
 
     createAccuracyInfo () {
-        let xValues = this.accuracy.map(e => e.x);
-        let yValues = this.accuracy.map(e => e.y);
         
+  
         //Average Accuracy
         let fontStyle = {
             font: '18px Arial', 
@@ -67,7 +65,7 @@ export class StatsScene extends Phaser.Scene {
             strokeAlpha: 0.75
         };
         let averageAccuracyNum = Math.floor(100*yValues.reduce((a, b) => a + b, 0)/(yValues.length - 1))/100;
-        let averageAccuracyLabel = new Phaser.GameObjects.Text(this, 0, 0, 'Avg. Accuracy: '+averageAccuracyNum+'%', fontStyle);
+        var averageAccuracyLabel = new Phaser.GameObjects.Text(this, 0, 0, 'Avg. Accuracy: '+averageAccuracyNum+'%', fontStyle);
         averageAccuracyLabel.setOrigin(0, 0.5);
         let labelWidth = averageAccuracyLabel.width;
         let labelOffset = 20;
@@ -97,9 +95,7 @@ export class StatsScene extends Phaser.Scene {
     }
 
     createAvgAnswerRateInfo () {
-        let xValues = this.avgAnswerRate.map(e => e.x);
-        let yValues = this.avgAnswerRate.map(e => e.y);
-        
+
         let config = {
             centerX: this.width/2,
             centerY: this.height/2,
@@ -117,6 +113,85 @@ export class StatsScene extends Phaser.Scene {
         var avgAnswerRate = new Graph(this, config);
         var layer = new Phaser.GameObjects.Layer(this, [avgAnswerRate.container]);
         return layer;
+    }
+
+    createPopcornPerformance(x, y, prompt) {
+        var popcornBG = this.add.sprite(x, y, 'popcorn');
+        var popcornText = this.add.bitmapText(x, y, 'kana', prompt);
+        popcornText.setOrigin(0.5, 0.5);
+        
+        let smallStyle = {
+            font: '12px Arial', 
+            color: '#333333',
+        };
+        var romajiText = this.add.text(x, y-popcornText.height/2, this.promptData[prompt].answer, smallStyle);
+        romajiText.setOrigin(0.5, 1);
+
+        let fontStyle = {
+            font: '18px Arial', 
+            color: '#E3FBFF',
+            stroke: '#000000',
+            strokeThickness: 2,
+            strokeAlpha: 0.5
+        };
+        let offsetY = 10;
+        var accuracyText = this.add.text(x - popcornBG.width/2, y + popcornBG.height/2 + offsetY, 'Accuracy: ' + this.promptData[prompt].accuracy + '%', fontStyle);
+        var avgTTAText = this.add.text(x - popcornBG.width/2, y + popcornBG.height/2 + accuracyText.height + offsetY, 'Avg. TTA: ' + this.promptData[prompt].avgTTA + ' ms', fontStyle);
+
+        return [popcornBG, popcornText, romajiText, accuracyText, avgTTAText];
+    }
+
+    createPerformanceInfo() {
+        this.processPromptDataInfo();
+        //Average Accuracy
+        let fontStyle = {
+            font: '24px Arial', 
+            color: '#E3FBFF',
+            stroke: '#000000',
+            strokeThickness: 2,
+            strokeAlpha: 0.75
+        };
+
+        var objectList = [];
+        var bestText = new Phaser.GameObjects.Text(this, 200, 150, 'Best', fontStyle);
+        objectList.push(bestText);
+        var nice = new Phaser.GameObjects.Image(this, 150, 200, 'nice');
+        objectList.push(nice);
+        var worstText = new Phaser.GameObjects.Text(this, 200, 350, 'Worst', fontStyle);
+        objectList.push(worstText);
+        var sad = new Phaser.GameObjects.Image(this, 150, 400, 'sad');
+        objectList.push(sad);
+        let x = 225;
+        let y = 225;
+        let offsetX = 175;
+        let offsetY = 200;
+        let numPrompts = this.promptData.best.length;
+        for (let i = 0; i < 3; i++) {
+            objectList.push(...this.createPopcornPerformance(x + i*offsetX, y, this.promptData.best[i]));
+            objectList.push(...this.createPopcornPerformance(x + i*offsetX, y+offsetY, this.promptData.best[numPrompts-i-1]));
+        }
+        var layer = new Phaser.GameObjects.Layer(this, objectList);
+        return layer;
+    }
+
+    processPromptDataInfo() {
+        let prompts = this.promptData['prompts'];
+        for (let i = 0; i < prompts.length; i++) {
+            let prompt = prompts[i];
+            let data = this.promptData[prompt];
+            this.promptData[prompt]['accuracy'] = Math.round(10000*data.numCorrect/(data.numAttempts + data.numCorrect + data.numMissed))/100;
+            this.promptData[prompt]['avgTTA'] = Math.round(data.delays.reduce((a, b) => a + b, 0)/data.delays.length);
+        }
+        this.promptData['best'] = [...prompts];
+        this.promptData['best'].sort((a, b) => {
+            let data = this.promptData;
+            if (data[a].accuracy == data[b].accuracy) {
+                return data[a].avgTTA - data[b].avgTTA; //asc avgTTA
+            }
+            else {
+                return data[b].accuracy - data[a].accuracy; //desc accuracy
+            }
+        });
     }
 
     createTabs (x, y, tabLabels, tabLayers) {
